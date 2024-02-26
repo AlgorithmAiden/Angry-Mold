@@ -18,7 +18,7 @@ function isRunningOnPhone() {
     return false
 }
 
-const targetCellSize = isRunningOnPhone() ? 15 : 7
+const targetCellSize = isRunningOnPhone() ? 11 : 7
 
 let gridWidth = Math.floor(canvas.width / targetCellSize)
 let gridHeight = Math.floor(canvas.height / targetCellSize)
