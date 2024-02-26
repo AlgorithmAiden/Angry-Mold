@@ -7,8 +7,18 @@ import * as Color from './Colors.js'
     canvas.height = window.innerHeight
     window.onresize = resize
 })()
+function isRunningOnPhone() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    if (/android/i.test(userAgent)) {
+        return true
+    }
+    if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+        return true
+    }
+    return false
+}
 
-const targetCellSize = 7
+const targetCellSize = isRunningOnPhone() ? 15 : 7
 
 let gridWidth = Math.floor(canvas.width / targetCellSize)
 let gridHeight = Math.floor(canvas.height / targetCellSize)
