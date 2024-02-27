@@ -18,7 +18,32 @@ function isRunningOnPhone() {
     return false
 }
 
-const targetCellSize = isRunningOnPhone() ? 11 : 7
+const targetCellSize = isRunningOnPhone() ? 12 : 9
+
+const presets = {
+    tron: {
+        organicGrowth: true,
+        quickGrowth: true,
+        overgrowth: false,
+        randomGrowth: false
+    },
+    overfill: {
+        organicGrowth: true,
+        quickGrowth: true,
+        overgrowth: true,
+        randomGrowth: true
+    }
+}
+
+const raceConditions = {
+    organicGrowth: true,
+    quickGrowth: false,
+    overgrowth: false,
+    randomGrowth: true,
+    // ...presets.tron
+    // ...presets.overfill
+}
+console.log(raceConditions)
 
 let gridWidth = Math.floor(canvas.width / targetCellSize)
 let gridHeight = Math.floor(canvas.height / targetCellSize)
@@ -87,7 +112,6 @@ function cellUpdate(pos) {
     //age
     self.age += Math.random()
     if (self.invincibility > 0) self.invincibility--
-    // console.log(self.invincibility)
 
     //die
     const root = self.root
@@ -113,7 +137,8 @@ function cellUpdate(pos) {
     else self.distance = grid[pos.x + self.root.dir.x][pos.y + self.root.dir.y].distance + 1
 
     //grow
-    let dirs = [{ "x": 1, "y": 0 }, { "x": -1, "y": 0 }, { "x": 0, "y": 1 }, { "x": 0, "y": -1 }].sort(() => Math.random() * 2 - 1)
+    let dirs = [{ "x": 1, "y": 0 }, { "x": -1, "y": 0 }, { "x": 0, "y": 1 }, { "x": 0, "y": -1 }]
+    if (raceConditions.randomGrowth) dirs.sort(() => Math.random() * 2 - 1)
     for (let dir of dirs) {
         let touchingSelf = 0
         let touchingEnemy = 0
@@ -129,12 +154,17 @@ function cellUpdate(pos) {
         dir.touchingEnemy = touchingEnemy
     }
 
-    if (!self.invincibility > 0)
-        dirs = dirs.filter(i => i.touchingSelf <= self.age / 50 + 3 || i.touchingEnemy > 5)
+    dirs = dirs.filter(i => i.touchingSelf <= Math.min(self.age / 50 + (raceConditions.organicGrowth ? 3 : 2), 6) || i.touchingEnemy > 5)
 
-    for (const dir of dirs) {
+    let averageTouchingEnemy = 0
+    for (let dir of dirs)
+        averageTouchingEnemy += dir.touchingEnemy
+    averageTouchingEnemy /= dirs.length
 
-        if (Math.random() < .25 || dir.touchingEnemy > 0) {
+
+    if (Math.random() < .25 || averageTouchingEnemy > 0 || raceConditions.quickGrowth) {
+
+        for (const dir of dirs) {
 
             const targetCell = cellAt(pos.x + dir.x, pos.y + dir.y)
             if (
@@ -180,7 +210,8 @@ function cellUpdate(pos) {
                 nextCellId++
                 renderList.push(pos)
                 renderList.push({ x: pos.x + dir.x, y: pos.y + dir.y })
-                break
+                if (!raceConditions.overgrowth)
+                    break
             }
         }
     }
@@ -212,7 +243,7 @@ function update() {
                 ctx.fillStyle = `rgb(${color.red * mult
                     },${color.green * mult
                     },${color.blue * mult
-                    },.5)`
+                    },.375)`
             }
         ctx.fillRect(offsetWidth + x * cellSize, offsetHeight + y * cellSize, cellSize, cellSize)
     }
@@ -231,6 +262,21 @@ function update() {
     //run the updates
     for (let pos of allPos) {
         cellUpdate(pos)
+    }
+
+    //create a new cell if there are none
+    if (allPos.length == 0) {
+        grid[Math.floor(Math.random() * gridWidth)][Math.floor(Math.random() * gridHeight)] = {
+            type: 'cell',
+            root: 'self',
+            endRoot: nextCellId,
+            id: nextCellId,
+            age: Math.pow(10, Math.random() * 20),
+            distance: 1,
+            invincibility: 100,
+            color: Color.createColor([['saturation', 100], ['lightness', 50], ['hue', getHue()]])
+        }
+        nextCellId++
     }
 }
 
@@ -293,6 +339,7 @@ document.addEventListener('click', e => {
     }
     else
         grid[x][y] = { type: 'empty' }
+    renderList.push({ x, y })
 })
 
 for (let i = 0; i < Math.random() * 5; i++) {
@@ -308,11 +355,6 @@ for (let i = 0; i < Math.random() * 5; i++) {
     }
     nextCellId++
 }
-//cell types:
-//cell (plant)
-//empty
-
-//each cell has its own id to make roots work well
 
 // [*] step 1: make plants that grow, and die when their root does
 // [*] step 2: make plants grow smarter to maximize spread
