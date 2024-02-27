@@ -113,12 +113,12 @@ function cellUpdate(pos) {
     else self.distance = grid[pos.x + self.root.dir.x][pos.y + self.root.dir.y].distance + 1
 
     //grow
-    let dirs = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }].sort(() => Math.random() * 2 - 1)
+    let dirs = [{ "x": 1, "y": 0 }, { "x": -1, "y": 0 }, { "x": 0, "y": 1 }, { "x": 0, "y": -1 }].sort(() => Math.random() * 2 - 1)
     for (let dir of dirs) {
         let touchingSelf = 0
         let touchingEnemy = 0
-        for (const subDir of dirs) {
-            const targetCell = cellAt(pos.x + dir.x + subDir.x, pos.y + dir.y + subDir.y)
+        for (const offset of [{ "x": 2, "y": 0 }, { "x": 0, "y": 0 }, { "x": 1, "y": 1 }, { "x": 1, "y": -1 }, { "x": 1, "y": 0 }, { "x": 0, "y": 0 }, { "x": -2, "y": 0 }, { "x": -1, "y": 1 }, { "x": -1, "y": -1 }, { "x": -1, "y": 0 }, { "x": 1, "y": 1 }, { "x": -1, "y": 1 }, { "x": 0, "y": 2 }, { "x": 0, "y": 0 }, { "x": 0, "y": 1 }, { "x": 1, "y": -1 }, { "x": -1, "y": -1 }, { "x": 0, "y": 0 }, { "x": 0, "y": -2 }, { "x": 0, "y": -1 }]) {
+            const targetCell = cellAt(pos.x + dir.x + offset.x, pos.y + dir.y + offset.y)
             if (targetCell.type == 'cell')
                 if (targetCell.endRoot == self.endRoot)
                     touchingSelf++
@@ -129,55 +129,59 @@ function cellUpdate(pos) {
         dir.touchingEnemy = touchingEnemy
     }
 
+    if (!self.invincibility > 0)
+        dirs = dirs.filter(i => i.touchingSelf <= self.age / 50 + 3 || i.touchingEnemy > 5)
 
-    if (self.age < 50)
-        dirs = dirs.filter(i => i.touchingSelf == 1)
     for (const dir of dirs) {
-        const targetCell = cellAt(pos.x + dir.x, pos.y + dir.y)
-        if (
-            targetCell.type == 'empty' ||
-            (targetCell.type == 'cell' &&
-                (!targetCell.invincibility > 0) &&
-                targetCell.endRoot != self.endRoot &&
-                Math.cos((Date.now() / (self.endRoot * 9999 % 500)) + self.endRoot * 9999) < Math.random() - 1 + (self.invincibility / 100))) {
 
-            //make sure to remove colors from the used hues
-            if (targetCell.root == 'self') usedHues.filter(i => i != targetCell.color.hue)
+        if (Math.random() < .25 || dir.touchingEnemy > 0) {
+
+            const targetCell = cellAt(pos.x + dir.x, pos.y + dir.y)
+            if (
+                targetCell.type == 'empty' ||
+                (targetCell.type == 'cell' &&
+                    (!targetCell.invincibility > 0) &&
+                    targetCell.endRoot != self.endRoot &&
+                    Math.cos((Date.now() / (self.endRoot * 9999 % 500)) + self.endRoot * 9999) < Math.random() - 1 + (self.invincibility / 100))) {
+
+                //make sure to remove colors from the used hues
+                if (targetCell.root == 'self') usedHues.filter(i => i != targetCell.color.hue)
 
 
-            //slight chance to mutate into a new node
-            if (Math.random() < .0001)
-                grid[pos.x + dir.x][pos.y + dir.y] = {
-                    type: 'cell',
-                    root: 'self',
-                    endRoot: nextCellId,
-                    id: nextCellId,
-                    age: 0,
-                    distance: 1,
-                    invincibility: 100,
-                    color: Color.createColor([['saturation', 100], ['lightness', 50], ['hue', getHue()]])
-                }
-            else
-                grid[pos.x + dir.x][pos.y + dir.y] = {
-                    id: nextCellId,
-                    type: 'cell',
-                    root: {
-                        dir: {
-                            x: -dir.x,
-                            y: -dir.y
+                //slight chance to mutate into a new node
+                if (Math.random() < .0001)
+                    grid[pos.x + dir.x][pos.y + dir.y] = {
+                        type: 'cell',
+                        root: 'self',
+                        endRoot: nextCellId,
+                        id: nextCellId,
+                        e: Math.pow(10, Math.random() * 20),
+                        distance: 1,
+                        invincibility: 100,
+                        color: Color.createColor([['saturation', 100], ['lightness', 50], ['hue', getHue()]])
+                    }
+                else
+                    grid[pos.x + dir.x][pos.y + dir.y] = {
+                        id: nextCellId,
+                        type: 'cell',
+                        root: {
+                            dir: {
+                                x: -dir.x,
+                                y: -dir.y
+                            },
+                            id: self.id
                         },
-                        id: self.id
-                    },
-                    endRoot: self.endRoot,
-                    color: self.color,
-                    age: 0,
-                    invincibility: 0,
-                    distance: 0
-                }
-            nextCellId++
-            renderList.push(pos)
-            renderList.push({ x: pos.x + dir.x, y: pos.y + dir.y })
-            break
+                        endRoot: self.endRoot,
+                        color: self.color,
+                        age: self.age / 10,
+                        invincibility: 0,
+                        distance: 0
+                    }
+                nextCellId++
+                renderList.push(pos)
+                renderList.push({ x: pos.x + dir.x, y: pos.y + dir.y })
+                break
+            }
         }
     }
 }
@@ -204,7 +208,7 @@ function update() {
                 ctx.fillStyle = '#fff'
             else {
                 const color = cell.color
-                const mult = 1 / (cell.distance / 100)
+                const mult = 1 / (cell.distance / (gridWidth * gridHeight / 100))
                 ctx.fillStyle = `rgb(${color.red * mult
                     },${color.green * mult
                     },${color.blue * mult
@@ -228,8 +232,6 @@ function update() {
     for (let pos of allPos) {
         cellUpdate(pos)
     }
-
-    console.log(usedHues,usedHues.length)
 }
 
 let running = true
@@ -282,7 +284,7 @@ document.addEventListener('click', e => {
             root: 'self',
             endRoot: nextCellId,
             id: nextCellId,
-            age: 0,
+            age: Math.pow(10, Math.random() * 20),
             distance: 1,
             invincibility: 100,
             color: Color.createColor([['saturation', 100], ['lightness', 50], ['hue', getHue()]])
@@ -293,18 +295,19 @@ document.addEventListener('click', e => {
         grid[x][y] = { type: 'empty' }
 })
 
-grid[Math.floor(Math.random() * gridWidth)][Math.floor(Math.random() * gridHeight)] = {
-    type: 'cell',
-    root: 'self',
-    endRoot: nextCellId,
-    id: nextCellId,
-    age: 0,
-    distance: 1,
-    invincibility: 100,
-    color: Color.createColor([['saturation', 100], ['lightness', 50], ['hue', getHue()]])
+for (let i = 0; i < Math.random() * 5; i++) {
+    grid[Math.floor(Math.random() * gridWidth)][Math.floor(Math.random() * gridHeight)] = {
+        type: 'cell',
+        root: 'self',
+        endRoot: nextCellId,
+        id: nextCellId,
+        age: Math.pow(10, Math.random() * 20),
+        distance: 1,
+        invincibility: 100,
+        color: Color.createColor([['saturation', 100], ['lightness', 50], ['hue', getHue()]])
+    }
+    nextCellId++
 }
-nextCellId++
-
 //cell types:
 //cell (plant)
 //empty
@@ -316,3 +319,4 @@ nextCellId++
 // [*] step 3: add really cool plant colors, and make each new plant choose an optimal color
 // [*] step 4: make plants of different roots eat eachother, giving each its own rhythm
 // [*] step 5: make cells sometimes die of age, and sometimes mutate into new nodes
+// [*] step 6: make cells grow more organically
