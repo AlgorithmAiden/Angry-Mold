@@ -37,7 +37,7 @@ const presets = {
 
 const raceConditions = {
     organicGrowth: true,
-    quickGrowth: false,
+    quickGrowth: true,
     overgrowth: false,
     randomGrowth: true,
     // ...presets.tron
@@ -318,7 +318,7 @@ setInterval(() => {
         oneTick = false
         update()
     }
-}, 1000 / 30)
+}, 1)
 
 document.addEventListener('click', e => {
     let x = Math.floor((e.offsetX - offsetWidth) / cellSize)
