@@ -33,9 +33,7 @@ const offsetHeight = Math.round((canvas.height - gridHeight * cellSize) / 2)
 
 let grid = new Array(gridWidth).fill(0).map(() => new Array(gridHeight).fill(0).map(() => ({ type: 'empty' })))
 
-let updateList = []
-
-for (let x = 0; x < gridWidth; x++) for (let y = 0; y < gridHeight; y++) updateList.push({ x, y })
+let renderList = []
 
 let usedHues = []
 
@@ -95,7 +93,7 @@ function cellUpdate(pos) {
     const root = self.root
     if (root != 'self' && grid[pos.x + root.dir.x][pos.y + root.dir.y].id != root.id) {
         grid[pos.x][pos.y] = { type: 'empty' }
-        updateList.push(pos)
+        renderList.push(pos)
         return
     }
 
@@ -106,7 +104,7 @@ function cellUpdate(pos) {
         if (self.root == 'self') usedHues.filter(i => i != self.color.hue)
 
         grid[pos.x][pos.y] = { type: 'empty' }
-        updateList.push(pos)
+        renderList.push(pos)
         return
     }
 
@@ -130,6 +128,8 @@ function cellUpdate(pos) {
         dir.touchingSelf = touchingSelf
         dir.touchingEnemy = touchingEnemy
     }
+
+
     if (self.age < 50)
         dirs = dirs.filter(i => i.touchingSelf == 1)
     for (const dir of dirs) {
@@ -175,8 +175,8 @@ function cellUpdate(pos) {
                     distance: 0
                 }
             nextCellId++
-            updateList.push(pos)
-            updateList.push({ x: pos.x + dir.x, y: pos.y + dir.y })
+            renderList.push(pos)
+            renderList.push({ x: pos.x + dir.x, y: pos.y + dir.y })
             break
         }
     }
@@ -187,32 +187,32 @@ let nextCellId = 1
 ctx.fillStyle = '#000'
 ctx.fillRect(0, 0, canvas.width, canvas.height)
 
+ctx.fillStyle = '#151515'
+ctx.fillRect(offsetWidth, offsetHeight, gridWidth * cellSize, gridHeight * cellSize)
+
 function update() {
 
     //render
-    for (const pos of updateList) {
+    for (const pos of renderList) {
         const x = pos.x
         const y = pos.y
         let cell = grid[x][y]
         if (cell.type == 'empty')
             ctx.fillStyle = '#151515'
-        else if (cell.type == 'cell') {
+        else if (cell.type == 'cell')
             if (cell.root == 'self')
                 ctx.fillStyle = '#fff'
             else {
                 const color = cell.color
-                const mult = 1 / (cell.distance / 50)
+                const mult = 1 / (cell.distance / 100)
                 ctx.fillStyle = `rgb(${color.red * mult
                     },${color.green * mult
                     },${color.blue * mult
-                    })`
+                    },.5)`
             }
-        }
-        else
-            ctx.fillStyle = foodColor(cell)
         ctx.fillRect(offsetWidth + x * cellSize, offsetHeight + y * cellSize, cellSize, cellSize)
     }
-    updateList = []
+    renderList = []
 
     //get all pos
     let allPos = []
@@ -228,6 +228,8 @@ function update() {
     for (let pos of allPos) {
         cellUpdate(pos)
     }
+
+    console.log(usedHues,usedHues.length)
 }
 
 let running = true
@@ -251,7 +253,7 @@ document.addEventListener('keypress', e => {
                     }
                 } else return { type: 'empty' }
             }))
-            for (let x = 0; x < gridWidth; x++) for (let y = 0; y < gridHeight; y++) updateList.push({ x, y })
+            for (let x = 0; x < gridWidth; x++) for (let y = 0; y < gridHeight; y++) renderList.push({ x, y })
         } else {
             running = !running
             console.log('running:', running)
